@@ -5,7 +5,7 @@ algo = (
     PGConfig()
     .environment(env="CartPole-v1")
     .framework("torch")
-    .offline_data(output="/tmp/cartpole-out", output_max_file_size=5000000)
+    .offline_data(output="offline_data/cartpole-out", output_max_file_size=5000000)
     .build())
 
 for i in range(10):
