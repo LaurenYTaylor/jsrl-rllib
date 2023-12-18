@@ -8,7 +8,7 @@ algo = (
     .offline_data(output="offline_data/cartpole-out", output_max_file_size=5000000)
     .build())
 
-for i in range(10):
+for i in range(100):
     result = algo.train()
     print(pretty_print(result))
 
