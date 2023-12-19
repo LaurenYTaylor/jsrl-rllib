@@ -71,18 +71,12 @@ def make_custom_policy(algo):
             **kwargs,
             ) -> Tuple[TensorType, List[TensorType], Dict[str, TensorType]]:
                 action = super().compute_actions_from_input_dict(input_dict, explore, timestep, **kwargs)
-                try:
-                    print(self.config["jsrl"]["horizon_fn"](kwargs['episodes'][-1], input_dict))
-                    print(self.config['jsrl']['current_horizon'])
-                except KeyError:
-                    pass
+
                 if ("current_horizon" not in self.config["jsrl"] or 
                             self.config["jsrl"]["horizon_fn"](kwargs["episodes"][-1], input_dict) 
                             > self.config["jsrl"]["current_horizon"]):
-                    print("learn")
                     return action
                 else:
-                    print("guide")
                     if 'actions' in input_dict:
                         input_dict.pop('actions')
                     guide_action = np.array([self.config['jsrl']['guide_policy'].compute_single_action(input_dict=input_dict,

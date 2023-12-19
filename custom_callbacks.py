@@ -6,6 +6,7 @@ from ray.rllib.env.base_env import BaseEnv
 from ray.rllib.evaluation.episode import Episode
 from ray.rllib.evaluation.episode_v2 import EpisodeV2
 import numpy as np
+from collections import deque
 
 class UpdateThresholdCallback(DefaultCallbacks):
     def on_create_policy(self, *, policy_id: PolicyID, policy: Policy) -> None:
@@ -33,8 +34,7 @@ class UpdateThresholdCallback(DefaultCallbacks):
                                         policy.config['jsrl']['curriculum_stages'])
             policy.config["jsrl"]['threshold_idx'] = 0
             policy.config['jsrl']['current_horizon'] = policy.config["jsrl"]['thresholds'][policy.config["jsrl"]['threshold_idx']]
-            
-            self.rolling_mean_rews = []
+            policy.config["jsrl"]["rolling_mean_rews"] = deque(maxlen=policy.config["jsrl"]["rolling_mean_n"])
 
     def on_evaluate_end(
         self,
@@ -53,14 +53,26 @@ class UpdateThresholdCallback(DefaultCallbacks):
                 You can mutate this object to add additional metrics.
             kwargs: Forward compatibility placeholder.
         """
+        if policy.config["jsrl"]["threshold_idx"] == len(policy.config["jsrl"]['thresholds']) - 1:
+            # if algorithm is already on the final curriculum stage, continue
+            return
+        
         policy = algorithm.get_policy()
         mean_reward = evaluation_metrics['evaluation']['sampler_results']['episode_reward_mean']
-        self.rolling_mean_rews.append(mean_reward)
-        rolling_mean = np.mean(self.rolling_mean_rews)
-        rolling_mean_tolerance = rolling_mean-policy.config["jsrl"]["tolerance"]*rolling_mean
-        if (len(self.rolling_mean_rews) > policy.config["jsrl"]["rolling_mean_n"] and 
-            rolling_mean_tolerance > policy.config["jsrl"]["jsrl_prev_best"]):
+        policy.config["jsrl"]["rolling_mean_rews"].append(mean_reward)
+        
+        rolling_mean = np.mean(policy.config["jsrl"]["rolling_mean_rews"])
+        if not np.isinf(policy.config["jsrl"]["jsrl_prev_best"]):
+            prev_best = policy.config["jsrl"]["jsrl_prev_best"]-policy.config["jsrl"]["tolerance"]*policy.config["jsrl"]["jsrl_prev_best"]
+        else:
+            prev_best = policy.config["jsrl"]["jsrl_prev_best"]
+            
+        if (len(policy.config["jsrl"]["rolling_mean_rews"]) == policy.config["jsrl"]["rolling_mean_n"] and 
+            rolling_mean > prev_best):
             policy.config["jsrl"]["threshold_idx"] += 1
             policy.config['jsrl']['current_horizon'] = policy.config["jsrl"]['thresholds'][policy.config["jsrl"]['threshold_idx']]
             policy.config["jsrl"]["jsrl_prev_best"] = rolling_mean
-            print("Increased threshold")
+
+        evaluation_metrics["jsrl/current_best"] = policy.config["jsrl"]["jsrl_prev_best"]
+        evaluation_metrics["jsrl/current_horizon_idx"] = policy.config["jsrl"]["threshold_idx"]
+        evaluation_metrics["jsrl/current_horizon"] = policy.config["jsrl"]["current_horizon"]
