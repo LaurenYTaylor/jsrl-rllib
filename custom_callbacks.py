@@ -35,6 +35,27 @@ class UpdateThresholdCallback(DefaultCallbacks):
             policy.config["jsrl"]['threshold_idx'] = 0
             policy.config['jsrl']['current_horizon'] = policy.config["jsrl"]['thresholds'][policy.config["jsrl"]['threshold_idx']]
             policy.config["jsrl"]["rolling_mean_rews"] = deque(maxlen=policy.config["jsrl"]["rolling_mean_n"])
+            policy.config["jsrl"]["agent_type"] = [None]
+
+    
+    def on_evaluate_start(
+        self,
+        *,
+        algorithm: "Algorithm",
+        **kwargs,
+    ) -> None:
+        """Callback before evaluation starts.
+
+        This method gets called at the beginning of Algorithm.evaluate().
+
+        Args:
+            algorithm: Reference to the algorithm instance.
+            kwargs: Forward compatibility placeholder.
+        """
+        def clr_agent_type(p, p_id):
+            p.config["jsrl"]["agent_type"] = []
+        algorithm.evaluation_workers.foreach_policy(clr_agent_type)
+        print("EVAL START")
 
     def on_evaluate_end(
         self,
@@ -53,26 +74,40 @@ class UpdateThresholdCallback(DefaultCallbacks):
                 You can mutate this object to add additional metrics.
             kwargs: Forward compatibility placeholder.
         """
-        if policy.config["jsrl"]["threshold_idx"] == len(policy.config["jsrl"]['thresholds']) - 1:
+        base_policy = algorithm.get_policy()
+      
+        if base_policy.config["jsrl"]["threshold_idx"] == len(base_policy.config["jsrl"]['thresholds']) - 1:
             # if algorithm is already on the final curriculum stage, continue
             return
         
-        policy = algorithm.get_policy()
         mean_reward = evaluation_metrics['evaluation']['sampler_results']['episode_reward_mean']
-        policy.config["jsrl"]["rolling_mean_rews"].append(mean_reward)
+        base_policy.config["jsrl"]["rolling_mean_rews"].append(mean_reward)
         
-        rolling_mean = np.mean(policy.config["jsrl"]["rolling_mean_rews"])
-        if not np.isinf(policy.config["jsrl"]["jsrl_prev_best"]):
-            prev_best = policy.config["jsrl"]["jsrl_prev_best"]-policy.config["jsrl"]["tolerance"]*policy.config["jsrl"]["jsrl_prev_best"]
+        rolling_mean = np.mean(base_policy.config["jsrl"]["rolling_mean_rews"])
+        if not np.isinf(base_policy.config["jsrl"]["jsrl_prev_best"]):
+            prev_best = base_policy.config["jsrl"]["jsrl_prev_best"]-base_policy.config["jsrl"]["tolerance"]*base_policy.config["jsrl"]["jsrl_prev_best"]
         else:
-            prev_best = policy.config["jsrl"]["jsrl_prev_best"]
+            prev_best = base_policy.config["jsrl"]["jsrl_prev_best"]
             
-        if (len(policy.config["jsrl"]["rolling_mean_rews"]) == policy.config["jsrl"]["rolling_mean_n"] and 
-            rolling_mean > prev_best):
+        def update_jsrl_stats(policy, _):
             policy.config["jsrl"]["threshold_idx"] += 1
             policy.config['jsrl']['current_horizon'] = policy.config["jsrl"]['thresholds'][policy.config["jsrl"]['threshold_idx']]
             policy.config["jsrl"]["jsrl_prev_best"] = rolling_mean
+            
+        if (len(base_policy.config["jsrl"]["rolling_mean_rews"]) == base_policy.config["jsrl"]["rolling_mean_n"] and 
+            rolling_mean > prev_best):
+            algorithm.workers.foreach_policy(update_jsrl_stats)
+            algorithm.evaluation_workers.foreach_policy(update_jsrl_stats) 
 
-        evaluation_metrics["jsrl/current_best"] = policy.config["jsrl"]["jsrl_prev_best"]
-        evaluation_metrics["jsrl/current_horizon_idx"] = policy.config["jsrl"]["threshold_idx"]
-        evaluation_metrics["jsrl/current_horizon"] = policy.config["jsrl"]["current_horizon"]
+        if not np.isinf(base_policy.config["jsrl"]["jsrl_prev_best"]):
+            evaluation_metrics["jsrl/current_best"] = base_policy.config["jsrl"]["jsrl_prev_best"]
+        evaluation_metrics["jsrl/current_horizon_idx"] = base_policy.config["jsrl"]["threshold_idx"]
+        evaluation_metrics["jsrl/current_horizon"] = base_policy.config["jsrl"]["current_horizon"]
+        
+        def get_agent_type(policy, _):
+            agent_type = policy.config["jsrl"]["agent_type"]
+            policy.config["jsrl"]["agent_type"] = []
+            return agent_type
+
+        agent_type = algorithm.evaluation_workers.foreach_policy(get_agent_type)[-1]
+        evaluation_metrics["jsrl/mean_agent_type"] = np.mean(agent_type)

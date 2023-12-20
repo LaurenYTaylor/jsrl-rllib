@@ -14,9 +14,9 @@ def make_offline_dataset(algo_config, env, timestr, n_data=1000000, num_iteratio
         checkpoint_path (_type_, optional): Path to checkpoint. Defaults to None, checkpoint is created from env_alg_timestr.
     """
     if checkpoint_path is None:
-        checkpoint_path = f"models/{env}_{algo_config}_{timestr}/data"
+        checkpoint_path = f"models/{env}_{algo_config.__name__}_{timestr}/data"
     
-    offline_dataset_path = f"offline_data/{env}_{algo_config}_{timestr}"
+    offline_dataset_path = f"offline_data/{env}_{algo_config.__name__}_{timestr}"
     
     algo = (
         algo_config()
