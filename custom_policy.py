@@ -78,10 +78,8 @@ def make_custom_policy(algo):
                         len(self.config["jsrl"]["agent_type"])==1 and 
                         self.config["jsrl"]["agent_type"][0] is None)):
                         self.config["jsrl"]["agent_type"].append(1)
-                    print("learning")
                     return action
                 else:
-                    print("guide")
                     if ("agent_type" in self.config["jsrl"] and not (
                         len(self.config["jsrl"]["agent_type"])==1 and 
                         self.config["jsrl"]["agent_type"][0] is None)):

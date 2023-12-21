@@ -55,7 +55,6 @@ class UpdateThresholdCallback(DefaultCallbacks):
         def clr_agent_type(p, p_id):
             p.config["jsrl"]["agent_type"] = []
         algorithm.evaluation_workers.foreach_policy(clr_agent_type)
-        print("EVAL START")
 
     def on_evaluate_end(
         self,

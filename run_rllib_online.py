@@ -1,10 +1,25 @@
 from custom_algorithm import make_custom_algorithm
 from custom_callbacks import UpdateThresholdCallback
-from ray.tune.logger import pretty_print
 from horizon_fns import timestep_horizon
+from custom_jsonreader import CustomJsonReader
+from ray.rllib.offline import ShuffledInput, InputReader, IOContext
+from ray.tune.registry import register_input
+
+def input_creator(ioctx: IOContext) -> InputReader:
+    """
+    The input creator method can be used in the input registry or set as the
+    config["input"] parameter.
+
+    Args:
+        ioctx: use this to access the `input_config` arguments.
+
+    Returns:
+        instance of ShuffledInput to work with some offline rl algorithms
+    """
+    return ShuffledInput(CustomJsonReader(ioctx))
 
 def train_learning_policy(algo, algo_config, guide_alg, env, timestr, offline_data_path, guide_policy_path, deterministic_sample, 
-                          num_iterations=100, checkpoint_freq=5, checkpoint_path=None, eval_interval=5, eval_duration=10):
+                          num_iterations=300, checkpoint_freq=5, checkpoint_path=None, eval_interval=5, eval_duration=10):
     """_summary_
 
     Args:
@@ -29,16 +44,21 @@ def train_learning_policy(algo, algo_config, guide_alg, env, timestr, offline_da
     custom_algo = make_custom_algorithm(algo)
     algo_config = algo_config(algo_class=custom_algo)
 
+    #register_input("custom_input", input_creator)
+
     config = (
         algo_config
         .environment(env=env)
         .framework("torch")
-        #.offline_data(input_={"sampler": 0.75, offline_data_path: 0.25})
+        .offline_data(input_={"sampler": 0.75, input_creator: 0.25},
+                      input_config={"input_files": offline_data_path},
+                      postprocess_inputs=True)
         .evaluation(
             evaluation_num_workers=1,
-            evaluation_duration_unit="timesteps",
-            evaluation_interval=2,
-            evaluation_duration=500
+            evaluation_duration_unit="episodes",
+            evaluation_interval=5,
+            evaluation_duration=20,
+            evaluation_config={"input": "sampler"}
         )
         .reporting(metrics_num_episodes_for_smoothing=1)
         .callbacks(callbacks_class=UpdateThresholdCallback)
@@ -50,9 +70,9 @@ def train_learning_policy(algo, algo_config, guide_alg, env, timestr, offline_da
     config = config.update_from_dict({"jsrl": {"guide_policy": (guide_alg, guide_policy_path),
                                             "deterministic_sample": deterministic_sample,
                                             "max_horizon": 500,
-                                            "curriculum_stages": 5,
+                                            "curriculum_stages": 10,
                                             "horizon_fn": timestep_horizon,
-                                            "rolling_mean_n": 3,
+                                            "rolling_mean_n": 5,
                                             "tolerance": 0.01}})
     algo = config.build()
 
