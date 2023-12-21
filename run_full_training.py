@@ -29,7 +29,7 @@ def run_pipeline(env, data_algo_config, offline_algo, offline_algo_config, onlin
     if guide_checkpoint_path is None:
         print("Training Guide Policy")
         guide_checkpoint_path = train_guide_policy(offline_algo_config, env, formatted, offline_data_path)
-    
+    exit()
     if online_algo in [PPO, PG]:
         deterministic_sample = False
     else:
@@ -48,8 +48,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     data_path = "offline_data/CartPole-v1_PGConfig_12202023_125957"
-    guide_path = "models/CartPole-v1_DQNConfig_12202023_125957/offline"
-    
+    #guide_path = "models/CartPole-v1_DQNConfig_12202023_125957/offline"
+    guide_path = None
     run_pipeline(args.env,
                  ALGO_CONFIG_DICT[args.data_creation_algo],
                  ALGO_DICT[args.offline_train_algo],

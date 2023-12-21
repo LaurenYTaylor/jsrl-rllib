@@ -5,8 +5,8 @@ from ray.tune.logger import pretty_print
 import os
 
 
-def train_guide_policy(algo_config, env, timestr, offline_data_path, num_iterations=301, checkpoint_freq=20,
-                       checkpoint_path=None, eval_interval=30, eval_duration=10):
+def train_guide_policy(algo_config, env, timestr, offline_data_path, num_iterations=300, checkpoint_freq=20,
+                       checkpoint_path=None, eval_interval=5, eval_duration=20):
     if checkpoint_path is None:
         checkpoint_path = f"models/{env}_{algo_config.__name__}_{timestr}/offline"
         log_path = f"logs/{env}_{algo_config.__name__}_{timestr}/offline"
@@ -23,7 +23,7 @@ def train_guide_policy(algo_config, env, timestr, offline_data_path, num_iterati
             evaluation_interval=eval_interval,
             evaluation_duration=eval_duration
         )
-        .resources(num_cpus_per_worker=1)
+        .resources(num_learner_workers=1, num_cpus_per_worker=1)
         .debugging(logger_config={"logdir": log_path,
                                   "type": "ray.tune.logger.TBXLogger"})
         .build()

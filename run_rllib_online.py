@@ -56,13 +56,13 @@ def train_learning_policy(algo, algo_config, guide_alg, env, timestr, offline_da
         .evaluation(
             evaluation_num_workers=1,
             evaluation_duration_unit="episodes",
-            evaluation_interval=5,
-            evaluation_duration=20,
+            evaluation_interval=eval_interval,
+            evaluation_duration=eval_duration,
             evaluation_config={"input": "sampler"}
         )
         .reporting(metrics_num_episodes_for_smoothing=1)
         .callbacks(callbacks_class=UpdateThresholdCallback)
-        .resources(num_learner_workers=1)
+        .resources(num_learner_workers=1, num_cpus_per_worker=1)
         .debugging(logger_config={"logdir": log_path,
                                   "type": "ray.tune.logger.TBXLogger"})
     )
