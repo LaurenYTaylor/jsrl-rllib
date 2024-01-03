@@ -1,7 +1,12 @@
-from ray.rllib.algorithms.pg import PGConfig
-from ray.tune.logger import pretty_print
-
-def make_offline_dataset(algo_config, env, timestr, n_data=1000000, num_iterations=100, checkpoint_freq=5, checkpoint_path=None):
+def make_offline_dataset(
+    algo_config,
+    env,
+    timestr,
+    n_data=1000000,
+    num_iterations=100,
+    checkpoint_freq=5,
+    checkpoint_path=None,
+):
     """Makes an offline dataset for training an agent offline.
 
     Args:
@@ -15,18 +20,19 @@ def make_offline_dataset(algo_config, env, timestr, n_data=1000000, num_iteratio
     """
     if checkpoint_path is None:
         checkpoint_path = f"models/{env}_{algo_config.__name__}_{timestr}/data"
-    
+
     offline_dataset_path = f"offline_data/{env}_{algo_config.__name__}_{timestr}"
-    
+
     algo = (
         algo_config()
         .environment(env=env)
         .framework("torch")
         .offline_data(output=offline_dataset_path, output_max_file_size=n_data)
-        .build())
+        .build()
+    )
 
     for i in range(num_iterations):
-        result = algo.train()
+        algo.train()
         if i % checkpoint_freq == 0:
             algo.save(checkpoint_path)
     return offline_dataset_path
