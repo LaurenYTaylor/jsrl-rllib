@@ -1,7 +1,8 @@
 from custom_algorithm import make_custom_algorithm
 from custom_callbacks import UpdateThresholdCallback
-from horizon_fns import timestep_horizon
+from horizon_fns import timestep_horizon, mean_horizon_fn, max_horizon_fn
 from data_reader_utils import json_input_creator, d4rl_input_creator
+import d4rl_env_maker
 
 
 def train_learning_policy(
@@ -13,11 +14,13 @@ def train_learning_policy(
     offline_data_path,
     guide_policy_path,
     deterministic_sample,
+    max_horizon,
     num_iterations=300,
-    checkpoint_freq=5,
+    checkpoint_freq=10,
     checkpoint_path=None,
-    eval_interval=5,
+    eval_interval=10,
     eval_duration=10,
+    train_batch_size=256,
 ):
     """_summary_
 
@@ -48,7 +51,7 @@ def train_learning_policy(
         input_config = {"input_files": offline_data_path}
     else:
         data_reader = d4rl_input_creator
-        input_config = {"inputs": env}
+        input_config = {"env": env, "batch_size": train_batch_size}
 
     config = (
         algo_config.environment(env=env)
@@ -67,7 +70,8 @@ def train_learning_policy(
         )
         .reporting(metrics_num_episodes_for_smoothing=1)
         .callbacks(callbacks_class=UpdateThresholdCallback)
-        .resources(num_learner_workers=1, num_cpus_per_worker=1)
+        .resources(num_cpus_per_worker=1)
+        .rollouts(num_rollout_workers=4, num_envs_per_worker=2)
         .debugging(
             logger_config={"logdir": log_path, "type": "ray.tune.logger.TBXLogger"}
         )
@@ -78,9 +82,10 @@ def train_learning_policy(
             "jsrl": {
                 "guide_policy": (guide_alg, guide_policy_path),
                 "deterministic_sample": deterministic_sample,
-                "max_horizon": 500,
+                "max_horizon": max_horizon,
                 "curriculum_stages": 10,
                 "horizon_fn": timestep_horizon,
+                "horizon_accumulate_fn": max_horizon_fn,
                 "rolling_mean_n": 5,
                 "tolerance": 0.01,
             }
@@ -93,4 +98,6 @@ def train_learning_policy(
         algo.train()
 
         if it % checkpoint_freq == 0:
-            algo.save(checkpoint_dir=checkpoint_path)
+            policy = algo.get_policy(policy_id="default_policy")
+            policy.export_checkpoint(checkpoint_path)
+            # algo.save(checkpoint_dir=checkpoint_path)

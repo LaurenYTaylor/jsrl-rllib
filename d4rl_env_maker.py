@@ -1,5 +1,5 @@
 import gym as old_gym
-from maze_env_wrapper import EnvCompatibility
+from maze_env_wrapper import EnvCompatibility, EnvCompatibilityRender
 import gymnasium as gym
 
 try:
@@ -10,8 +10,12 @@ except ImportError:
     d4rl = None
 
 
-def antmaze_umaze():
-    return EnvCompatibility(old_gym.make("antmaze-umaze-v0"))
+def antmaze_umaze(**kwargs):
+    return EnvCompatibility(old_gym.make("antmaze-umaze-v2", **kwargs))
+
+
+def antmaze_umaze_render(**kwargs):
+    return EnvCompatibilityRender(old_gym.make("antmaze-umaze-v2", **kwargs))
 
 
 def halfcheetah_random():

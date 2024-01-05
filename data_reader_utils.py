@@ -27,6 +27,7 @@ def d4rl_input_creator(ioctx: IOContext) -> InputReader:
     Returns:
         instance of ShuffledInput to work with some offline rl algorithms
     """
-
     inputs = ioctx.input_config["env"]
-    return ShuffledInput(CustomD4RLReader(inputs))
+    if "batch_size" in ioctx.input_config:
+        batch_size = ioctx.input_config["batch_size"]
+    return ShuffledInput(CustomD4RLReader(inputs, batch_size))

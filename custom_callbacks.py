@@ -29,7 +29,7 @@ class UpdateThresholdCallback(DefaultCallbacks):
         if "jsrl" in policy.config:
             guide_policy_args = policy.config["jsrl"]["guide_policy"]
             algo, path = guide_policy_args
-            trained_algo = algo.from_checkpoint(path)
+            trained_algo = Policy.from_checkpoint(path + "/policies/default_policy")
             policy.config["jsrl"]["guide_policy"] = trained_algo
 
             if "jsrl_prev_best" not in policy.config["jsrl"]:
@@ -46,7 +46,6 @@ class UpdateThresholdCallback(DefaultCallbacks):
             policy.config["jsrl"]["rolling_mean_rews"] = deque(
                 maxlen=policy.config["jsrl"]["rolling_mean_n"]
             )
-            policy.config["jsrl"]["agent_type"] = [None]
 
     def on_evaluate_start(
         self,
@@ -66,6 +65,7 @@ class UpdateThresholdCallback(DefaultCallbacks):
 
         def clr_agent_type(p, p_id):
             p.config["jsrl"]["agent_type"] = []
+            p.config["jsrl"]["mean_threshold"] = []
 
         algorithm.evaluation_workers.foreach_policy(clr_agent_type)
 
@@ -139,11 +139,16 @@ class UpdateThresholdCallback(DefaultCallbacks):
             "current_horizon"
         ]
 
-        def get_agent_type(policy, _):
+        def get_eval_stats(policy, _):
             agent_type = policy.config["jsrl"]["agent_type"]
+            mean_thresholds = policy.config["jsrl"]["mean_threshold"]
             policy.config["jsrl"]["agent_type"] = []
-            return agent_type
+            policy.config["jsrl"]["mean_threshold"] = []
+            return agent_type, mean_thresholds
 
         # Clear the agent_type list for the eval workers
-        agent_type = algorithm.evaluation_workers.foreach_policy(get_agent_type)[-1]
+        agent_type, mean_threshold = algorithm.evaluation_workers.foreach_policy(
+            get_eval_stats
+        )[-1]
         evaluation_metrics["jsrl/mean_agent_type"] = np.mean(agent_type)
+        evaluation_metrics["jsrl/mean_threshold"] = np.mean(mean_threshold)
