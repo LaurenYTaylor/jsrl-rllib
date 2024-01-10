@@ -19,5 +19,6 @@ training_configs = {
             "rollout_fragment_length": "auto",
         },
         "offline_data": {"actions_in_input_normalized": True},
-    }
+    },
+    "bc": {"training": {}, "rollouts": {}, "offline_data": {}},
 }

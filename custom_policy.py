@@ -96,15 +96,14 @@ def make_custom_policy(algo):
                     input_dict.pop("actions")
 
                 # The following makes a guide action computed from the pre-trained policy have the same information as a learning action
-                guide_action = np.array(
-                    [
-                        self.config["jsrl"]["guide_policy"].compute_single_action(
-                            input_dict=input_dict, explore=False, timestep=timestep
-                        )[0]
-                    ]
+                guide_action = self.config["jsrl"][
+                    "guide_policy"
+                ].compute_single_action(
+                    input_dict=input_dict, explore=False, timestep=timestep
                 )
-
-                act_np = np.array(guide_action)
+                act_np = guide_action[0]
+                if not isinstance(act_np, np.ndarray):
+                    act_np = np.array([act_np])
                 if self.dist_class is not None:
                     dist_class = self.dist_class
                 else:
@@ -117,19 +116,21 @@ def make_custom_policy(algo):
                     action_dist = dist_class(
                         logits=torch.Tensor(action[2]["action_dist_inputs"])
                     )
-                guide_logp = action_dist.logp(torch.Tensor(guide_action))
+                guide_logp = action_dist.logp(torch.Tensor(act_np))
                 action_prob = torch.exp(guide_logp.float())
                 if self.config["jsrl"]["deterministic_sample"] == True:
-                    if action_prob < 0.5:
-                        action_prob = [0.0]
-                        guide_logp = [-np.inf]
-                    else:
-                        action_prob = [1.0]
-                        guide_logp = [0.0]
+                    action_prob[action_prob < 0.5] = 0
+                    action_prob[action_prob >= 0.5] = 1
+                    guide_logp[action_prob < 0.5] = -np.inf
+                    guide_logp[action_prob >= 0.5] = 0
+                if isinstance(action_prob, torch.Tensor):
+                    action_prob = action_prob.numpy()
+                    guide_logp = guide_logp.numpy()
                 dist_info = action[2]
-                dist_info["action_logp"] = np.array(guide_logp)
-                dist_info["action_prob"] = np.array(action_prob)
+                dist_info["action_logp"] = guide_logp
+                dist_info["action_prob"] = action_prob
                 action = (act_np, action[1], dist_info)
+
                 return action
 
         @override(policy)

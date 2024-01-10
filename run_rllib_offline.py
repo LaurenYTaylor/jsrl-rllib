@@ -2,6 +2,7 @@ from data_reader_utils import d4rl_input_creator
 import d4rl_env_maker
 import numpy as np
 from ray.rllib.policy.policy import Policy
+import gymnasium
 
 
 def train_guide_policy(
@@ -73,9 +74,13 @@ def train_guide_policy(
 def evaluate_guide_policy(
     checkpoint_path, env, algo, horizon_fn, horizon_accumulator_fn, eval_eps=5
 ):
-    env_name = env.split(".")[1]
-    env_fn = getattr(d4rl_env_maker, env_name)
-    env = env_fn()
+    try:
+        env_name = env.split(".")[1]
+        env_fn = getattr(d4rl_env_maker, env_name)
+        env = env_fn()
+    except IndexError:
+        env_name = env
+        env = gymnasium.make(env)
 
     algo = Policy.from_checkpoint(checkpoint_path + "/policies/default_policy")
 

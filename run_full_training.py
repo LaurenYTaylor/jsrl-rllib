@@ -41,7 +41,6 @@ def run_pipeline(
     offline_algo_config = ALGO_CONFIG_DICT[offline_train_algo]
     online_algo = ALGO_DICT[online_train_algo]
     online_algo_config = ALGO_CONFIG_DICT[online_train_algo]
-    offline_training_config = training_configs[offline_train_algo]
 
     now = datetime.now()
     formatted = now.strftime("%m%d%Y_%H%M%S")
@@ -53,25 +52,25 @@ def run_pipeline(
 
     if guide_checkpoint_path is None:
         print("Training Guide Policy")
+        offline_training_config = training_configs[offline_train_algo]
         guide_checkpoint_path = train_guide_policy(
             offline_algo_config,
             offline_training_config,
             env,
             formatted,
             offline_data_path,
-            num_iterations=1000000,
-            checkpoint_freq=20,
-            eval_interval=100,
-            eval_duration=100,
+            num_iterations=5000,
+            checkpoint_freq=25,
+            eval_interval=25,
+            eval_duration=10,
         )
         ray.shutdown()
 
     init_horizon = evaluate_guide_policy(
         guide_checkpoint_path, env, offline_algo, timestep_horizon, max_horizon_fn
     )
-
+    print(init_horizon)
     ray.shutdown()
-    # init_horizon = 0
 
     if online_algo in [PPO, PG, SAC]:
         deterministic_sample = False
@@ -89,9 +88,10 @@ def run_pipeline(
         guide_checkpoint_path,
         deterministic_sample,
         init_horizon,
-        num_iterations=1000000,
-        eval_duration=100,
+        num_iterations=5000,
+        eval_duration=10,
         eval_interval=25,
+        checkpoint_freq=25,
     )
 
     ray.shutdown()

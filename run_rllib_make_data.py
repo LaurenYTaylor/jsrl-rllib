@@ -28,11 +28,14 @@ def make_offline_dataset(
         .environment(env=env)
         .framework("torch")
         .offline_data(output=offline_dataset_path, output_max_file_size=n_data)
+        .resources(num_cpus_per_worker=1)
+        .rollouts(num_rollout_workers=1, num_envs_per_worker=1)
         .build()
     )
 
-    for i in range(num_iterations):
+    for it in range(num_iterations):
+        print(f"Data Creation: {it}/{num_iterations}")
         algo.train()
-        if i % checkpoint_freq == 0:
+        if it % checkpoint_freq == 0:
             algo.save(checkpoint_path)
     return offline_dataset_path

@@ -35,10 +35,11 @@ class UpdateThresholdCallback(DefaultCallbacks):
             if "jsrl_prev_best" not in policy.config["jsrl"]:
                 policy.config["jsrl"]["jsrl_prev_best"] = -np.inf
             policy.config["jsrl"]["thresholds"] = np.linspace(
-                policy.config["jsrl"]["max_horizon"],
+                policy.config["jsrl"]["init_horizon"],
                 0,
                 policy.config["jsrl"]["curriculum_stages"],
             )
+            print(policy.config["jsrl"]["thresholds"])
             policy.config["jsrl"]["threshold_idx"] = 0
             policy.config["jsrl"]["current_horizon"] = policy.config["jsrl"][
                 "thresholds"

@@ -14,7 +14,7 @@ def train_learning_policy(
     offline_data_path,
     guide_policy_path,
     deterministic_sample,
-    max_horizon,
+    init_horizon,
     num_iterations=300,
     checkpoint_freq=10,
     checkpoint_path=None,
@@ -71,7 +71,7 @@ def train_learning_policy(
         .reporting(metrics_num_episodes_for_smoothing=1)
         .callbacks(callbacks_class=UpdateThresholdCallback)
         .resources(num_cpus_per_worker=1)
-        .rollouts(num_rollout_workers=4, num_envs_per_worker=2)
+        .rollouts(num_rollout_workers=4, num_envs_per_worker=1)
         .debugging(
             logger_config={"logdir": log_path, "type": "ray.tune.logger.TBXLogger"}
         )
@@ -82,7 +82,7 @@ def train_learning_policy(
             "jsrl": {
                 "guide_policy": (guide_alg, guide_policy_path),
                 "deterministic_sample": deterministic_sample,
-                "max_horizon": max_horizon,
+                "init_horizon": init_horizon,
                 "curriculum_stages": 10,
                 "horizon_fn": timestep_horizon,
                 "horizon_accumulate_fn": max_horizon_fn,
